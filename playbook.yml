@@ -1,0 +1,101 @@
+---
+- name: Configurar e iniciar PostgreSQL no Docker
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Criar rede Docker personalizada
+      community.general.docker_network:
+        name: rede_infra
+        driver: bridge
+        ipam_config:
+          - subnet: 192.168.15.0/24
+
+    - name: Criar volume Docker para dados persistentes
+      community.general.docker_volume:
+        name: backend_data
+        state: present
+
+# container banco de dados
+    - name: Construir imagem do PostgreSQL
+      community.general.docker_image:
+        name: postgresql
+        source: build  
+        build:
+          path: /home/rafael/Downloads/ifc/FINAL/db # Substitua pelo caminho absoluto para a pasta 'db'
+          dockerfile: Dockerfile
+        state: present
+
+    - name: Iniciar contêiner PostgreSQL
+      community.general.docker_container:
+        name: my_postgres
+        image: postgresql
+        state: started
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: '1234'
+          POSTGRES_DB: infrauser
+        ports:
+          - "5432:5432"
+        networks:
+          - name: rede_infra
+            ipv4_address: 192.168.15.2
+        volumes:
+          - db_data:/var/lib/postgresql/data
+
+    - name: Aguardar até que o PostgreSQL esteja acessível
+      wait_for:
+        host: 192.168.15.2
+        port: 5432
+        delay: 10
+        timeout: 30
+        state: started
+
+# container back-end
+- name: Configurar e iniciar contêiner de backend em Python
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Construir imagem do backend
+      community.general.docker_image:
+        name: backend-python
+        source: build          
+        build:
+          path: /home/rafael/Downloads/ifc/FINAL/back # Substitua pelo caminho absoluto para a pasta 'backend'
+          dockerfile: Dockerfile
+        state: present
+
+    - name: Iniciar contêiner do backend
+      community.general.docker_container:
+        name: meu_backend
+        image: backend-python
+        state: started
+        ports:
+          - "5000:5000"
+        networks:
+          - name: rede_infra
+            ipv4_address: 192.168.15.3
+
+# container front-end
+- name: Configurar e iniciar contêiner de frontend PHP
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Construir imagem do frontend
+      community.general.docker_image:
+        name: frontend-php
+        source: build  
+        build:
+          path: /home/rafael/Downloads/ifc/FINAL/front # Substitua pelo caminho absoluto para a pasta 'frontend'
+          dockerfile: Dockerfile
+        state: present
+
+    - name: Iniciar contêiner do frontend
+      community.general.docker_container:
+        name: meu_frontend
+        image: frontend-php
+        state: started
+        ports:
+          - "8000:8000"
+        networks:
+          - name: rede_infra
+            ipv4_address: 192.168.15.4

@@ -18,6 +18,6 @@ Banco de dados: PostgreSQL
 
 ## Como executar:
 Execute o arquivo playbook.yml
-"sudo ansible-playbook playbook.yml"
+```sudo ansible-playbook playbook.yml```
 
-Acesse, pelo navegador, a url: "http://192.168.15.4:8000"
+Acesse, pelo navegador, a url: ```http://192.168.15.4:8000```
